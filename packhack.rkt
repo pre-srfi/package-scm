@@ -35,8 +35,12 @@
 (define (packages-for package-repo-title package-list)
   (map (curry package-for package-repo-title) package-list))
 
+(define (package-name-for-sorting package-name)
+  (string-trim package-name #rx"[()]"))
+
 (define (sort-package-table package-table)
-  (sort (hash->list package-table) string-ci<? #:key first))
+  (sort (hash->list package-table)
+        string-ci<? #:key (compose package-name-for-sorting first)))
 
 (define (tabulate-packages-by-name package-list)
   (sort-package-table
