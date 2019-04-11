@@ -8,20 +8,28 @@
 
 ;;
 
-(define (wrap-up package-repo-title package-names)
-  (map (λ (package-name) (list package-repo-title package-name))
-       (sort (map string-trim package-names) string-ci<?)))
+(define (sort-packages package-list)
+  (sort package-list string-ci<? #:key first))
+
+(define (packages-for package-repo-title package-list)
+  (map (λ (pkg) (append pkg (list package-repo-title)))
+       package-list))
+
 
 ;;
 
 (define (gauche-packages)
   (let ((document (html->xexp (file->string ".cache/gauche-packages.html"))))
-    ((sxpath "//a/text()")
-     document)
-    ((sxpath "//td[contains(@class, 'inbody')]/text()")
-     document)
-    (wrap-up "Gauche" ((sxpath "//h3/text()") document))))
+    ;; ((sxpath "//a/text()") document)
+    ;; ((sxpath "//td[contains(@class, 'inbody')]/text()") document)
+    (packages-for "Gauche"
+                  (map (compose (λ (package-name) (list package-name "" ""))
+                                string-trim)
+                       ((sxpath "//h3/text()") document)))))
 
 ;;
 
-(for-each writeln (gauche-packages))
+(for-each (lambda (pkg)
+            (newline)
+            (for-each writeln pkg))
+          (sort-packages (gauche-packages)))
