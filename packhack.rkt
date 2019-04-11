@@ -13,9 +13,27 @@
 (define (not-null? x)
   (not (null? x)))
 
+(define (first= k)
+  (λ (x) (and (pair? x) (equal? k (first x)))))
+
+(define (read-all)
+  (let loop ((xs '()))
+    (let ((x (read)))
+      (if (eof-object? x) (reverse xs) (loop (cons x xs))))))
+
+(define (write->string x)
+  (with-output-to-string (curry write x)))
+
+(define (lines->string lines)
+  (string-join lines "\n"))
+
+;;
+
+(define (package-for package-repo-title package)
+  (append package (list package-repo-title)))
+
 (define (packages-for package-repo-title package-list)
-  (map (λ (pkg) (append pkg (list package-repo-title)))
-       package-list))
+  (map (curry package-for package-repo-title) package-list))
 
 (define (sort-package-table package-table)
   (sort (hash->list package-table) string-ci<? #:key first))
@@ -29,6 +47,44 @@
                          '()))
           (hash)
           package-list)))
+
+;;
+
+(define (akku-package-name package-form)
+  (let ((pkg-name (cadr (or (assoc 'name (rest package-form))
+                            (error "No name")))))
+    (if (string? pkg-name) pkg-name (write->string pkg-name))))
+
+(define (akku-package-first-version-form package-form)
+  (first (rest (assoc 'versions (rest package-form)))))
+
+(define (akku-package-first-synopsis package-form)
+  (cadr (or (assoc 'synopsis (akku-package-first-version-form package-form))
+            '(synopsis ""))))
+
+(define (akku-package-first-description package-form)
+  (cadr (or (assoc 'description
+                   (akku-package-first-version-form package-form))
+            '(description ""))))
+
+(define (akku-package-from-snow-fort? package-form)
+  (string-prefix?
+   (akku-package-first-description package-form)
+   "This Snow package is federated from http://snow-fort.org/"))
+
+(define (akku-and-snow-fort-packages)
+  (append-map (λ (package-form)
+                (let* ((pkg-name (akku-package-name package-form))
+                       (pkg-desc (akku-package-first-synopsis package-form))
+                       (package  (list pkg-name "" pkg-desc)))
+                  (cons (package-for "Akku" package)
+                        (if (akku-package-from-snow-fort? package-form)
+                            (list (package-for "Snow-Fort" package))
+                            (list)))))
+              (filter (first= 'package)
+                      (let ((lines (file->lines ".cache/akku-index.scm")))
+                        (with-input-from-string (lines->string (drop lines 1))
+                          read-all)))))
 
 ;;
 
@@ -80,7 +136,8 @@
 ;;
 
 (define (packages-list-from-all-repos)
-  (append (chicken-egg-index-4)
+  (append (akku-and-snow-fort-packages)
+          (chicken-egg-index-4)
           (chicken-egg-index-5)
           (gauche-packages)))
 
