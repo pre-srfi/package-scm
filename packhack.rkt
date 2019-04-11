@@ -84,6 +84,10 @@
           (chicken-egg-index-5)
           (gauche-packages)))
 
+(define (package-impl-tds package-impl)
+  `((td ,(second package-impl))
+    (td ,(third package-impl))))
+
 (define (package-list->html package-list)
   (xexpr->html
    `(html
@@ -106,12 +110,12 @@
          (th "Repository"))
         ,@(append-map
            (λ (pkg)
-             (match-let (((list-rest pkg-name pkg-implementations) pkg))
-               (map (λ (pkg-impl)
-                      `(tr (td ,pkg-name)
-                           (td ,(second pkg-impl))
-                           (td ,(third pkg-impl))))
-                    pkg-implementations)))
+             (match-let (((list-rest pkg-name first-impl more-impls) pkg))
+               (let ((n (number->string (+ 1 (length more-impls)))))
+                 (cons `(tr (td ((rowspan ,n)) ,pkg-name)
+                            ,@(package-impl-tds first-impl))
+                       (map (compose (curry cons 'tr) package-impl-tds)
+                            more-impls)))))
            (tabulate-packages-by-name package-list))))))))
 
 (define (string->file string file)
