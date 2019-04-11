@@ -4,7 +4,9 @@
 
 (require sxml)
 
+(require css-expr)
 (require html-parsing)
+(require txexpr)
 
 ;;
 
@@ -77,14 +79,42 @@
 
 ;;
 
-(for-each (lambda (pkg)
-            (displayln (string-append "-- " (first pkg)))
-            (for-each (λ (pkg-impl)
-                        (newline)
-                        (for-each displayln pkg-impl))
-                      (rest pkg))
-            (newline))
-          (tabulate-packages-by-name
-           (append (chicken-egg-index-4)
-                   (chicken-egg-index-5)
-                   (gauche-packages))))
+(define (packages-list-from-all-repos)
+  (append (chicken-egg-index-4)
+          (chicken-egg-index-5)
+          (gauche-packages)))
+
+(define (package-list->html package-list)
+  (xexpr->html
+   `(html
+     (head
+      (title "Scheme packages")
+      (style
+          ,(css-expr->css
+            (css-expr
+             [html #:font-family sans-serif]
+             [table #:border-collapse collapse]
+             [table td th
+                    #:border (1px solid black)
+                    #:padding 5px])))
+      (body
+       (h1 "Scheme packages")
+       (table
+        (tr
+         (th "Package name")
+         (th "Description"))
+        ,@(append-map
+           (λ (pkg)
+             (match-let (((list-rest pkg-name pkg-implementations) pkg))
+               (map (λ (pkg-impl)
+                      `(tr (td ,pkg-name)
+                           (td ,(second pkg-impl))))
+                    pkg-implementations)))
+           (tabulate-packages-by-name package-list))))))))
+
+(define (string->file string file)
+  (call-with-atomic-output-file
+   file (λ (out . _) (write-string string out))))
+
+(string->file (package-list->html (packages-list-from-all-repos))
+              "packhack.html")
