@@ -13,8 +13,8 @@
 (define (not-null? x)
   (not (null? x)))
 
-(define (first= k)
-  (λ (x) (and (pair? x) (equal? k (first x)))))
+(define (first-equal? k x)
+  (and (pair? x) (equal? k (first x))))
 
 (define (read-all)
   (let loop ((xs '()))
@@ -26,6 +26,10 @@
 
 (define (lines->string lines)
   (string-join lines "\n"))
+
+(define (string->file string file)
+  (call-with-atomic-output-file
+   file (λ (out . _) (write-string string out))))
 
 ;;
 
@@ -85,7 +89,7 @@
                         (if (akku-package-from-snow-fort? package-form)
                             (list (package-for "Snow-Fort" package))
                             (list)))))
-              (filter (first= 'package)
+              (filter (curry first-equal? 'package)
                       (let ((lines (file->lines ".cache/akku-index.scm")))
                         (with-input-from-string (lines->string (drop lines 1))
                           read-all)))))
@@ -199,10 +203,6 @@
                        (map (compose (curry cons 'tr) package-impl-tds)
                             more-impls)))))
            (tabulate-packages-by-name package-list))))))))
-
-(define (string->file string file)
-  (call-with-atomic-output-file
-   file (λ (out . _) (write-string string out))))
 
 (string->file (package-list->html (packages-list-from-all-repos))
               "packhack.html")
