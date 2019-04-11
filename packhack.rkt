@@ -102,13 +102,15 @@
        (table
         (tr
          (th "Package name")
-         (th "Description"))
+         (th "Description")
+         (th "Repository"))
         ,@(append-map
            (λ (pkg)
              (match-let (((list-rest pkg-name pkg-implementations) pkg))
                (map (λ (pkg-impl)
                       `(tr (td ,pkg-name)
-                           (td ,(second pkg-impl))))
+                           (td ,(second pkg-impl))
+                           (td ,(third pkg-impl))))
                     pkg-implementations)))
            (tabulate-packages-by-name package-list))))))))
 
