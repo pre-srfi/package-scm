@@ -128,14 +128,35 @@
 
 ;;
 
-(define (gauche-packages)
+(define (gauche-iterate-relevant-tags)
   (let ((document (html->xexp (file->string ".cache/gauche-packages.html"))))
-    ;; ((sxpath "//a/text()") document)
-    ;; ((sxpath "//td[contains(@class, 'inbody')]/text()") document)
-    (packages-for "Gauche"
-                  (map (compose (λ (package-name) (list package-name "" ""))
-                                string-trim)
-                       ((sxpath "//h3/text()") document)))))
+    (append-map
+     (λ (tag)
+       (case (first tag)
+         ((h3)
+          (list (list 'h3 (string-trim (first ((sxpath "text()") tag))))))
+         ((table)
+          (map (compose (curry list 'td) string-trim)
+               ((sxpath "//td/text()") tag)))
+         (else '())))
+     ((sxpath "//body/*") document))))
+
+(define (gauche-append-package all cur)
+  (if (not cur)
+      all
+      (append all (list (list (first cur) "" (third cur))))))
+
+(define (gauche-packages)
+  (packages-for
+   "Gauche"
+   (let loop ((tags (gauche-iterate-relevant-tags)) (cur #f) (all '()))
+     (match tags
+       ((list)
+        (gauche-append-package all cur))
+       ((list-rest (list 'h3 text) tags)
+        (loop tags (list text) (gauche-append-package all cur)))
+       ((list-rest (list 'td text) tags)
+        (loop tags (append cur (list text)) all))))))
 
 ;;
 
