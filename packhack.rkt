@@ -11,12 +11,22 @@
 (define (not-null? x)
   (not (null? x)))
 
-(define (sort-packages package-list)
-  (sort package-list string-ci<? #:key first))
-
 (define (packages-for package-repo-title package-list)
   (map (λ (pkg) (append pkg (list package-repo-title)))
        package-list))
+
+(define (sort-package-table package-table)
+  (sort (hash->list package-table) string-ci<? #:key first))
+
+(define (tabulate-packages-by-name package-list)
+  (sort-package-table
+   (foldl (λ (pkg table)
+            (hash-update table
+                         (first pkg)
+                         (λ (packages) (append packages (list (rest pkg))))
+                         '()))
+          (hash)
+          package-list)))
 
 ;;
 
@@ -68,9 +78,13 @@
 ;;
 
 (for-each (lambda (pkg)
-            (newline)
-            (for-each writeln pkg))
-          (sort-packages
+            (displayln (string-append "-- " (first pkg)))
+            (for-each (λ (pkg-impl)
+                        (newline)
+                        (for-each displayln pkg-impl))
+                      (rest pkg))
+            (newline))
+          (tabulate-packages-by-name
            (append (chicken-egg-index-4)
                    (chicken-egg-index-5)
                    (gauche-packages))))
