@@ -31,6 +31,9 @@
   (call-with-atomic-output-file
    file (λ (out . _) (write-string string out))))
 
+(define (condense-whitespace s)
+  (string-trim (string-replace s #px"\\s+" " ")))
+
 ;;
 
 (define (package-for package-repo-title package)
@@ -164,11 +167,40 @@
 
 ;;
 
+(define (guile-package-descriptions document)
+  (filter
+   (λ (s) (and (>= (string-length s) 20)
+               (not (memf (curry string-contains? s)
+                          '("This website is powered by GNU Guile and")))))
+   (map (λ (div)
+          (condense-whitespace
+           (string-join ((sxpath "./descendant-or-self::*/text()")
+                         (first ((sxpath "./p") div))))))
+        ((sxpath "//body//div") document))))
+
+(define (guile-packages)
+  (let* ((document (html->xexp (file->string ".cache/guile-packages.html"))))
+    (packages-for
+     "Guile"
+     (map (λ (package description)
+            (append package (list description)))
+          ;; Another hack. A sxpath bug puts the first section last, so
+          ;; we sort it ourselves.
+          (sort (map (λ (section)
+                       (list (car ((sxpath "./h3/a/text()") section))
+                             (car ((sxpath "./h3/a/@href/text()") section))))
+                     ((sxpath "//section[contains(@class, 'lib')]") document))
+                string-ci<? #:key first)
+          (guile-package-descriptions document)))))
+
+;;
+
 (define (packages-list-from-all-repos)
   (append (akku-and-snow-fort-packages)
           (chicken-egg-index-4)
           (chicken-egg-index-5)
-          (gauche-packages)))
+          (gauche-packages)
+          (guile-packages)))
 
 (define (package-impl-tds package-impl)
   `((td ,(second package-impl))
