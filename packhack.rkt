@@ -10,6 +10,10 @@
 
 ;;
 
+(define max-description-length 100)
+
+;;
+
 (define (not-null? x)
   (not (null? x)))
 
@@ -33,6 +37,9 @@
 
 (define (condense-whitespace s)
   (string-trim (string-replace s #px"\\s+" " ")))
+
+(define (cap-string-length max-length s)
+  (condense-whitespace (substring s 0 (min max-length (string-length s)))))
 
 ;;
 
@@ -203,7 +210,7 @@
           (guile-packages)))
 
 (define (package-impl-tds package-impl)
-  `((td ,(second package-impl))
+  `((td ,(cap-string-length max-description-length (second package-impl)))
     (td ,(third package-impl))))
 
 (define (package-list->html package-list)
