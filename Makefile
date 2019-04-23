@@ -55,3 +55,9 @@ browse-html : packhack.html
 
 .cache/guile-packages.html :
 	wget -O $@ https://www.gnu.org/software/guile/libraries/
+
+.cache/ravensc-readme.md :
+	wget --header="Accept: text/plain" -O $@ https://raw.githubusercontent.com/guenchi/Raven/master/README.md
+
+.cache/ravensc-packages.json :
+	wget --post-data="" --header="Accept: application/json" -O $@ http://ravensc.com/list
