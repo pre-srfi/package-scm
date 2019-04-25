@@ -5,6 +5,7 @@
 (require json)                          ; read-json
 (require net/http-client)               ; http-sendrecv
 (require net/uri-codec)                 ; alist->form-urlencoded
+(require net/url)                       ; call/input-url
 (require srfi/1)                        ; list-index
 (require srfi/26)                       ; cut, cute
 
@@ -14,6 +15,8 @@
 (require txexpr)
 
 ;;
+
+(define cache-dir (build-path (current-directory) ".cache"))
 
 (define max-description-length 100)
 
@@ -45,6 +48,53 @@
 
 (define (cap-string-length max-length s)
   (condense-whitespace (substring s 0 (min max-length (string-length s)))))
+
+(define (url-input url)
+  (call/input-url
+   (string->url url)
+   (lambda (url) (get-pure-port url '() #:redirections 1))
+   identity))
+
+(define http-sendrecv-port-if-ok
+  (make-keyword-procedure
+   (lambda (kw-syms kw-args normal-args)
+     (define-values (status headers port)
+       (keyword-apply http-sendrecv kw-syms kw-args normal-args))
+     (unless (bytes=? status #"HTTP/1.1 200 OK")
+       (error "HTTP request did not return 200 OK"))
+     port)))
+
+(define (read-json-predicate predicate port)
+  (let ((json-data (read-json port)))
+    (cond ((eof-object? json-data)
+           (error "No data"))
+          ((not (predicate json-data))
+           (error "Bad data" json-data))
+          (else json-data))))
+
+(define read-json-list (curry read-json-predicate list?))
+
+(define read-json-hash (curry read-json-predicate hash-eq?))
+
+;;
+
+(define (fetch-into-cache cache-filename get-input-port)
+  (let ((in (get-input-port)))
+    (call-with-atomic-output-file
+     cache-filename
+     (lambda (out _) (write-bytes (port->bytes in) out)))))
+
+(define (cache-get-filename cache-basename get-input-port)
+  (let ((cache-filename (build-path cache-dir cache-basename)))
+    (make-directory* cache-dir)
+    (unless (file-exists? cache-filename)
+      (fprintf (current-error-port) "Fetching <~a>...~%" cache-basename)
+      (fetch-into-cache cache-filename get-input-port))
+    cache-filename))
+
+(define (cache-get-proc proc cache-basename get-input-port)
+  (call-with-input-file (cache-get-filename cache-basename get-input-port)
+    proc))
 
 ;;
 
@@ -205,9 +255,41 @@
                 string-ci<? #:key first)
           (guile-package-descriptions document)))))
 
-;; ---
+;;
 
-(define (raven-packages [use-cache? #t])
+(define (raven-cache-readme-lines)
+  (cache-get-proc
+   port->lines
+   "ravensc-readme.md"
+   (λ ()
+     (url-input
+      "https://raw.githubusercontent.com/guenchi/Raven/master/README.md"))))
+
+(define (raven-cache-packages-json)
+  (cache-get-proc
+   read-json-list
+   "ravensc-packages.json"
+   (λ ()
+     (http-sendrecv-port-if-ok
+      "ravensc.com" "/list"
+      #:ssl? #f
+      #:method "POST"
+      #:headers (list "Accept: application/json")))))
+
+(define (raven-cache-package-info-json pkg-name)
+  (cache-get-proc
+   read-json-hash
+   (let ((safe-pkg-name (regexp-replace* #rx"[^A-Za-z0-9-]" pkg-name "_")))
+     (string-append "ravensc-info-" safe-pkg-name ".json"))
+   (λ ()
+     (http-sendrecv-port-if-ok
+      "ravensc.com" "/info"
+      #:ssl? #f
+      #:method "POST"
+      #:headers '("Content-Type: application/x-www-form-urlencoded")
+      #:data (alist->form-urlencoded `((name . ,pkg-name)))))))
+
+(define (raven-packages)
 
   (define (dflt-desc pkg-desc [dflt-text "(no description)"])
     (if (and pkg-desc (positive? (string-length (string-trim pkg-desc))))
@@ -217,73 +299,19 @@
   (define (make-pkg-entry pkg-name [pkg-desc #f])
     `(,pkg-name "" ,(dflt-desc pkg-desc)))
 
-  (define (http-ok? status)
-    (bytes=? status #"HTTP/1.1 200 OK"))
-
-  (define (http->json-obj status port proc)
-    (if (http-ok? status)
-        (let ((json-data (read-json port)))
-          (cond
-           ((eof-object? json-data)
-            (error "No data"))
-           ((hash-eq? json-data)
-            (proc json-data))
-           (else
-            (error "Bad data" json-data))))
-        (error "Bad status" status)))
-
-  (define (http->map-json-arr status port proc)
-    (if (http-ok? status)
-        (let ((json-data (read-json port)))
-          (cond
-           ((eof-object? json-data)
-            (error "No data"))
-           ((list? json-data)
-            (map proc json-data))
-           (else
-            (error "Bad data" json-data))))
-        (error "Bad status" status)))
-
-  (define (http->md-lines status port)
-    (if (http-ok? status)
-        (string-split (port->string port) "\n")
-        (error "Bad status" status)))
-
-  (define (pathname->map-json-arr pathname proc)
-    (call-with-input-file pathname
-      (lambda (port)
-        (let ((json-data (read-json port)))
-          (cond
-           ((eof-object? json-data)
-            (error "No data"))
-           ((list? json-data)
-            (map proc json-data))
-           (else
-            (error "Bad data" json-data)))))))
-
-  (define (pathname->md-lines pathname)
-    (string-split (file->string pathname) "\n"))
-
   (define (try-json-pkg-info pkg-name dflt-pkg-info)
-    ;; Note: we cache the responses for the single requests to the Github page and JSON list, but we try to execute the
-    ;; many JSON requests per each individual package info - and gracefully handle the case of an HTTP error.
-    (define-values (status headers port)
-      (with-handlers ([exn:fail? (lambda (exn) (values #f '() #f))])
-                     (http-sendrecv "ravensc.com" "/info" #:ssl? #f #:method "POST"
-                                    #:headers (list "Content-Type: application/x-www-form-urlencoded")
-                                    #:data (alist->form-urlencoded `((name . ,pkg-name))))))
-    (if status
-        (http->json-obj status port
-                        (lambda (json-obj)
-                          (let ((dscrp (hash-ref json-obj 'dscrp)))
-                            (if (eq? dscrp (json-null))
-                                dflt-pkg-info ; not all JSON responses will have the description set, so default
-                                (make-pkg-entry pkg-name dscrp)))))
-        dflt-pkg-info))                       ; also default, if the JSON request fails
+    (let* ((json-obj (raven-cache-package-info-json pkg-name))
+           (dscrp (hash-ref json-obj 'dscrp)))
+      ;; Not all JSON responses will have the description set, so
+      ;; default.
+      (if (eq? dscrp (json-null))
+          dflt-pkg-info
+          (make-pkg-entry pkg-name dscrp))))
 
   (define (gh-pkg-info pkg-name)
 
-    (define header-cols '((gh-package       . "package") ; "package" must be the first column name
+    ;; "package" must be the first column name.
+    (define header-cols '((gh-package       . "package")
                           (gh-chez-only?    . "only for Chez")
                           (gh-description   . "description")
                           (gh-r6rs?         . "r6rs common")
@@ -296,11 +324,14 @@
     (define (split-pkg-info line header-idxs)
 
       (define (safe-list-ref cols idx)
-        ;; Empty trailing columns won't be filled up in the markdown table, so fetch columns safely:
+        ;; Empty trailing columns won't be filled up in the markdown
+        ;; table, so fetch columns safely:
         (if (< idx (length cols)) (list-ref cols idx) ""))
 
       (let ((cols (split-table-cols line)))
-        (if (null? (cdr cols)) #f (map (cut safe-list-ref cols <>) header-idxs))))
+        (if (null? (cdr cols))
+            #f
+            (map (cut safe-list-ref cols <>) header-idxs))))
 
     (define (split-header-cols line)
 
@@ -314,43 +345,35 @@
       (let ((cols (split-table-cols line)))
         (if (null? (cdr cols)) #f (col-idxs cols (map cdr header-cols)))))
 
-    (let ((raven-gh-lines (if use-cache?
-                              (pathname->md-lines ".cache/ravensc-readme.md")
-                              (let-values ([(status headers port)
-                                            (http-sendrecv "raw.githubusercontent.com" "/guenchi/Raven/master/README.md"
-                                                           #:ssl? #t #:method "GET"
-                                                           #:headers (list "Content-Type: text/plain"))])
-                                (http->md-lines status port)))))
-      (let ((props (let loop ((lines (filter (compose positive? string-length) raven-gh-lines))
-                              (header-idxs #f))
-                     (cond
+    (let* ((raven-gh-lines (raven-cache-readme-lines))
+           (props (let loop ((lines (filter (compose positive? string-length)
+                                            raven-gh-lines))
+                             (header-idxs #f))
+                    (cond
                       ((null? lines) #f)
-                      ((split-header-cols (car lines)) =>
-                       (lambda (col-idxs)
-                         (loop (cdr lines) col-idxs)))
-                      ((and header-idxs (split-pkg-info (car lines) header-idxs)) =>
-                       (lambda (pkg-values)
-                         (if (and pkg-values (string=? (car pkg-values) pkg-name))
-                             (map cons (map car header-cols) pkg-values)
-                             (loop (cdr lines) header-idxs))))
+                      ((split-header-cols (car lines))
+                       => (lambda (col-idxs)
+                            (loop (cdr lines) col-idxs)))
+                      ((and header-idxs
+                            (split-pkg-info (car lines) header-idxs))
+                       => (lambda (pkg-values)
+                            (if (and pkg-values
+                                     (string=? (car pkg-values) pkg-name))
+                                (map cons (map car header-cols) pkg-values)
+                                (loop (cdr lines) header-idxs))))
                       (else
                        (loop (cdr lines) header-idxs))))))
-        (if props
-            (make-pkg-entry pkg-name (cdr (assoc 'gh-description props)))
-            ;; Not all entries in the JSON package list will have an entry in the README, so allow a minimal default:
-            (make-pkg-entry pkg-name)))))
+      (if props
+          (make-pkg-entry pkg-name (cdr (assoc 'gh-description props)))
+          ;; Not all entries in the JSON package list will have an
+          ;; entry in the README, so allow a minimal default:
+          (make-pkg-entry pkg-name))))
 
   (define (all-pkg-info pkg-obj)
     (let ((pkg-name (hash-ref pkg-obj 'name)))
       (try-json-pkg-info pkg-name (gh-pkg-info pkg-name))))
 
-  (packages-for "Raven"
-                (if use-cache?
-                    (pathname->map-json-arr ".cache/ravensc-packages.json" all-pkg-info)
-                    (let-values ([(status headers port)
-                                  (http-sendrecv "ravensc.com" "/list" #:ssl? #f #:method "POST"
-                                                 #:headers (list "Accept: application/json"))])
-                      (http->map-json-arr status port all-pkg-info)))))
+  (packages-for "Raven" (map all-pkg-info (raven-cache-packages-json))))
 
 ;
 
