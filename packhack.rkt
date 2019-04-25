@@ -104,6 +104,12 @@
   (call-with-input-file (cache-get-filename cache-basename get-input-port)
     proc))
 
+(define (cache-get-proc-from-url proc cache-basename url)
+  (cache-get-proc proc cache-basename (curry call-with-url-input url)))
+
+(define (cache-get-html-xexp-from-url cache-basename url)
+  (cache-get-proc-from-url (compose html->xexp port->string)
+                           cache-basename url))
 ;;
 
 (define (package-for package-repo-title package)
@@ -131,14 +137,13 @@
 ;;
 
 (define (akku-cache-index-forms)
-  (cache-get-proc
+  (cache-get-proc-from-url
    (λ (port)
      (let ((lines (port->lines port)))
        (with-input-from-string (lines->string (drop lines 1))
          read-all)))
    "akku-index.scm"
-   (curry call-with-url-input
-          "https://archive.akkuscm.org/archive/Akku-index.scm")))
+   "https://archive.akkuscm.org/archive/Akku-index.scm"))
 
 (define (akku-package-name package-form)
   (let ((pkg-name (cadr (or (assoc 'name (rest package-form))
@@ -198,9 +203,7 @@
      (chicken-eggref name desc))))
 
 (define (chicken-egg-index-n package-repo-title cache-basename url)
-  (let ((document (html->xexp
-                   (cache-get-proc port->string cache-basename
-                                   (curry call-with-url-input url)))))
+  (let ((document (cache-get-html-xexp-from-url cache-basename url)))
     (packages-for package-repo-title
                   (filter not-null?
                           (map chicken-grovel-tr
@@ -217,12 +220,9 @@
 ;;
 
 (define (gauche-packages-xexp)
-  (cache-get-proc
-   (compose html->xexp port->string)
+  (cache-get-html-xexp-from-url
    "gauche-packages.html"
-   (curry
-    call-with-url-input
-    "https://practical-scheme.net/wiliki/wiliki.cgi/Gauche:Packages")))
+   "https://practical-scheme.net/wiliki/wiliki.cgi/Gauche:Packages"))
 
 (define (gauche-iterate-relevant-tags)
   (let ((document (gauche-packages-xexp)))
@@ -257,11 +257,9 @@
 ;;
 
 (define (guile-packages-xexp)
-  (cache-get-proc
-   (compose html->xexp port->string)
+  (cache-get-html-xexp-from-url
    "guile-packages.html"
-   (curry call-with-url-input
-          "https://www.gnu.org/software/guile/libraries/")))
+   "https://www.gnu.org/software/guile/libraries/"))
 
 (define (guile-package-descriptions document)
   (filter
@@ -292,12 +290,10 @@
 ;;
 
 (define (raven-cache-readme-lines)
-  (cache-get-proc
+  (cache-get-proc-from-url
    port->lines
    "ravensc-readme.md"
-   (curry
-    call-with-url-input
-    "https://raw.githubusercontent.com/guenchi/Raven/master/README.md")))
+   "https://raw.githubusercontent.com/guenchi/Raven/master/README.md"))
 
 (define (raven-cache-packages-json)
   (cache-get-proc
