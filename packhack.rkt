@@ -211,8 +211,15 @@
 
 ;;
 
+(define (gauche-packages-xexp)
+  (cache-get-proc
+   (compose html->xexp port->string)
+   "gauche-packages.html"
+   (λ () (url-input
+          "https://practical-scheme.net/wiliki/wiliki.cgi/Gauche:Packages"))))
+
 (define (gauche-iterate-relevant-tags)
-  (let ((document (html->xexp (file->string ".cache/gauche-packages.html"))))
+  (let ((document (gauche-packages-xexp)))
     (append-map
      (λ (tag)
        (case (first tag)
