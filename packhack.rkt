@@ -49,6 +49,13 @@
 (define (cap-string-length max-length s)
   (condense-whitespace (substring s 0 (min max-length (string-length s)))))
 
+(define (alist->hash alist)
+  (foldl (λ (pair h) (hash-set h (car pair) (cdr pair)))
+         (hash) alist))
+
+(define (hash-map-key-val h keyfun valfun)
+  (alist->hash (hash-map h (λ (key val) (cons (keyfun key) (valfun val))))))
+
 (define (call-with-url-input url proc)
   (call/input-url
    (string->url url)
@@ -108,19 +115,18 @@
 (define (package-name-for-sorting package-name)
   (string-trim package-name #rx"[()]"))
 
-(define (sort-package-table package-table)
-  (sort (hash->list package-table)
-        string-ci<? #:key (compose package-name-for-sorting first)))
+(define (packages-by-name->hash package-list)
+  (foldl (λ (pkg table)
+           (hash-update table
+                        (first pkg)
+                        (λ (packages) (append packages (list (rest pkg))))
+                        '()))
+         (hash)
+         package-list))
 
-(define (tabulate-packages-by-name package-list)
-  (sort-package-table
-   (foldl (λ (pkg table)
-            (hash-update table
-                         (first pkg)
-                         (λ (packages) (append packages (list (rest pkg))))
-                         '()))
-          (hash)
-          package-list)))
+(define (packages-by-name->alist package-list)
+  (sort (hash->list (packages-by-name->hash package-list))
+        string-ci<? #:key (compose package-name-for-sorting first)))
 
 ;;
 
@@ -447,8 +453,25 @@
                             ,@(package-impl-tds first-impl))
                        (map (compose (curry cons 'tr) package-impl-tds)
                             more-impls)))))
-           (tabulate-packages-by-name package-list))))))))
+           (packages-by-name->alist package-list))))))))
 
+(define (package-list->json package-list)
+  (jsexpr->string
+   (hash-map-key-val
+    (packages-by-name->hash package-list)
+    string->symbol
+    (λ (pkgs-with-this-name)
+      (foldl (λ (pkg repo->info)
+               (match-define (list url description repository) pkg)
+               (hash-set repo->info
+                         (string->symbol repository)
+                         (hash 'description description
+                               'url (or url ""))))
+             (hash) pkgs-with-this-name)))))
 
-(string->file (package-list->html (packages-list-from-all-repos))
-              "packhack.html")
+(define (main)
+  (let ((package-list (packages-list-from-all-repos)))
+    (string->file (package-list->html package-list) "packhack.html")
+    (string->file (package-list->json package-list) "packhack.json")))
+
+(main)
