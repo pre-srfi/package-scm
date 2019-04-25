@@ -2,15 +2,15 @@
 
 #lang errortrace racket
 
-(require sxml)
-
-(require css-expr)
-(require html-parsing)
 (require json)                          ; read-json
 (require net/http-client)               ; http-sendrecv
 (require net/uri-codec)                 ; alist->form-urlencoded
 (require srfi/1)                        ; list-index
 (require srfi/26)                       ; cut, cute
+
+(require css-expr)
+(require html-parsing)
+(require sxml)
 (require txexpr)
 
 ;;
