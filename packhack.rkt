@@ -123,6 +123,15 @@
 
 ;;
 
+(define (akku-cache-index-forms)
+  (cache-get-proc
+   (λ (port)
+     (let ((lines (port->lines port)))
+       (with-input-from-string (lines->string (drop lines 1))
+         read-all)))
+   "akku-index.scm"
+   (λ () (url-input "https://archive.akkuscm.org/archive/Akku-index.scm"))))
+
 (define (akku-package-name package-form)
   (let ((pkg-name (cadr (or (assoc 'name (rest package-form))
                             (error "No name")))))
@@ -155,9 +164,7 @@
                             (list (package-for "Snow-Fort" package))
                             (list)))))
               (filter (curry first-equal? 'package)
-                      (let ((lines (file->lines ".cache/akku-index.scm")))
-                        (with-input-from-string (lines->string (drop lines 1))
-                          read-all)))))
+                      (akku-cache-index-forms))))
 
 ;;
 
