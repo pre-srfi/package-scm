@@ -19,10 +19,8 @@ clean-cache :
 # raco install in Makefiles: https://github.com/search?l=Makefile&p=3&q=%22raco+pkg+install%22+makefile&type=Code
 # or (install or update): https://stackoverflow.com/a/51125833/2512585
 install-deps :
-	-raco pkg install --skip-installed sxml
-	-raco pkg install --skip-installed css-expr
-	-raco pkg install --skip-installed html-parsing
-	-raco pkg install --skip-installed --deps search-auto txexpr
+	-raco pkg install --skip-installed --deps search-auto \
+	    css-expr html-parsing sxml txexpr
 
 .PHONY : -html-cache
 -html-cache : .cache/
