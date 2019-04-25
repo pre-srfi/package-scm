@@ -31,7 +31,7 @@ install-deps :
 	mkdir -p $@
 
 package-htmls : -html-cache \
-	.cache/akku-index.scm .cache/egg-index-4.html .cache/egg-index-5.html .cache/gauche-packages.html .cache/guile-packages.html
+	.cache/akku-index.scm .cache/egg-index-4.html .cache/egg-index-5.html .cache/gauche-packages.html .cache/guile-packages.html .cache/ravensc-packages.json .cache/ravensc-readme.md
 
 # Note: see http://lassi.io/temp/packhack.html for a complete result page
 packhack.html : install-deps package-htmls
