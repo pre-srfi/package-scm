@@ -199,15 +199,11 @@
 
 (define (chicken-egg-index-4)
   (chicken-egg-index-n
-   "Chicken 4"
-   "egg-index-4.html"
-   "https://wiki.call-cc.org/chicken-projects/egg-index-4.html"))
+   "Chicken 4" "egg-index-4.html" "https://eggs.call-cc.org/4/"))
 
 (define (chicken-egg-index-5)
   (chicken-egg-index-n
-   "Chicken 5"
-   "egg-index-5.html"
-   "https://wiki.call-cc.org/chicken-projects/egg-index-5.html"))
+   "Chicken 5" "egg-index-5.html" "https://eggs.call-cc.org/5/"))
 
 ;;
 
