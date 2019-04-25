@@ -49,20 +49,21 @@
 (define (cap-string-length max-length s)
   (condense-whitespace (substring s 0 (min max-length (string-length s)))))
 
-(define (url-input url)
+(define (call-with-url-input url proc)
   (call/input-url
    (string->url url)
    (lambda (url) (get-pure-port url '() #:redirections 1))
-   identity))
+   proc))
 
-(define http-sendrecv-port-if-ok
+(define call-with-http-sendrecv-port
   (make-keyword-procedure
-   (lambda (kw-syms kw-args normal-args)
+   (lambda (kw-syms kw-args proc . normal-args)
      (define-values (status headers port)
        (keyword-apply http-sendrecv kw-syms kw-args normal-args))
      (unless (bytes=? status #"HTTP/1.1 200 OK")
        (error "HTTP request did not return 200 OK"))
-     port)))
+     (with-input-from-bytes (port->bytes port)
+       proc))))
 
 (define (read-json-predicate predicate port)
   (let ((json-data (read-json port)))
@@ -78,11 +79,11 @@
 
 ;;
 
-(define (fetch-into-cache cache-filename get-input-port)
-  (let ((in (get-input-port)))
-    (call-with-atomic-output-file
-     cache-filename
-     (lambda (out _) (write-bytes (port->bytes in) out)))))
+(define (fetch-into-cache cache-filename call-with-in-port)
+  (call-with-atomic-output-file
+   cache-filename
+   (λ (out _) (write-bytes (call-with-in-port port->bytes)
+                           out))))
 
 (define (cache-get-filename cache-basename get-input-port)
   (let ((cache-filename (build-path cache-dir cache-basename)))
@@ -130,7 +131,8 @@
        (with-input-from-string (lines->string (drop lines 1))
          read-all)))
    "akku-index.scm"
-   (λ () (url-input "https://archive.akkuscm.org/archive/Akku-index.scm"))))
+   (curry call-with-url-input
+          "https://archive.akkuscm.org/archive/Akku-index.scm")))
 
 (define (akku-package-name package-form)
   (let ((pkg-name (cadr (or (assoc 'name (rest package-form))
@@ -190,8 +192,9 @@
      (chicken-eggref name desc))))
 
 (define (chicken-egg-index-n package-repo-title cache-basename url)
-  (let ((document (html->xexp (cache-get-proc port->string cache-basename
-                                              (λ () (url-input url))))))
+  (let ((document (html->xexp
+                   (cache-get-proc port->string cache-basename
+                                   (curry call-with-url-input url)))))
     (packages-for package-repo-title
                   (filter not-null?
                           (map chicken-grovel-tr
@@ -211,8 +214,9 @@
   (cache-get-proc
    (compose html->xexp port->string)
    "gauche-packages.html"
-   (λ () (url-input
-          "https://practical-scheme.net/wiliki/wiliki.cgi/Gauche:Packages"))))
+   (curry
+    call-with-url-input
+    "https://practical-scheme.net/wiliki/wiliki.cgi/Gauche:Packages")))
 
 (define (gauche-iterate-relevant-tags)
   (let ((document (gauche-packages-xexp)))
@@ -250,7 +254,8 @@
   (cache-get-proc
    (compose html->xexp port->string)
    "guile-packages.html"
-   (λ () (url-input "https://www.gnu.org/software/guile/libraries/"))))
+   (curry call-with-url-input
+          "https://www.gnu.org/software/guile/libraries/")))
 
 (define (guile-package-descriptions document)
   (filter
@@ -284,16 +289,17 @@
   (cache-get-proc
    port->lines
    "ravensc-readme.md"
-   (λ ()
-     (url-input
-      "https://raw.githubusercontent.com/guenchi/Raven/master/README.md"))))
+   (curry
+    call-with-url-input
+    "https://raw.githubusercontent.com/guenchi/Raven/master/README.md")))
 
 (define (raven-cache-packages-json)
   (cache-get-proc
    read-json-list
    "ravensc-packages.json"
-   (λ ()
-     (http-sendrecv-port-if-ok
+   (λ (proc)
+     (call-with-http-sendrecv-port
+      proc
       "ravensc.com" "/list"
       #:ssl? #f
       #:method "POST"
@@ -304,8 +310,9 @@
    read-json-hash
    (let ((safe-pkg-name (regexp-replace* #rx"[^A-Za-z0-9-]" pkg-name "_")))
      (string-append "ravensc-info-" safe-pkg-name ".json"))
-   (λ ()
-     (http-sendrecv-port-if-ok
+   (λ (proc)
+     (call-with-http-sendrecv-port
+      proc
       "ravensc.com" "/info"
       #:ssl? #f
       #:method "POST"
