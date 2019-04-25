@@ -189,18 +189,25 @@
     ((list-rest name desc _)
      (chicken-eggref name desc))))
 
-(define (chicken-egg-index-n package-repo-title html-filename)
-  (let ((document (html->xexp (file->string html-filename))))
+(define (chicken-egg-index-n package-repo-title cache-basename url)
+  (let ((document (html->xexp (cache-get-proc port->string cache-basename
+                                              (λ () (url-input url))))))
     (packages-for package-repo-title
                   (filter not-null?
                           (map chicken-grovel-tr
                                (rest ((sxpath "//table/tr") document)))))))
 
 (define (chicken-egg-index-4)
-  (chicken-egg-index-n "Chicken 4" ".cache/egg-index-4.html"))
+  (chicken-egg-index-n
+   "Chicken 4"
+   "egg-index-4.html"
+   "https://wiki.call-cc.org/chicken-projects/egg-index-4.html"))
 
 (define (chicken-egg-index-5)
-  (chicken-egg-index-n "Chicken 5" ".cache/egg-index-5.html"))
+  (chicken-egg-index-n
+   "Chicken 5"
+   "egg-index-5.html"
+   "https://wiki.call-cc.org/chicken-projects/egg-index-5.html"))
 
 ;;
 
