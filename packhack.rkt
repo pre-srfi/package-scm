@@ -6,6 +6,11 @@
 
 (require css-expr)
 (require html-parsing)
+(require json)                          ; read-json
+(require net/http-client)               ; http-sendrecv
+(require net/uri-codec)                 ; alist->form-urlencoded
+(require srfi/1)                        ; list-index
+(require srfi/26)                       ; cut, cute
 (require txexpr)
 
 ;;
@@ -201,12 +206,6 @@
           (guile-package-descriptions document)))))
 
 ;; ---
-
-(require json)                          ; read-json
-(require net/http-client)               ; http-sendrecv
-(require net/uri-codec)                 ; alist->form-urlencoded
-(require srfi/1)                        ; list-index
-(require srfi/26)                       ; cut, cute
 
 (define (raven-packages [use-cache? #t])
 
