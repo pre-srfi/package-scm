@@ -250,6 +250,12 @@
 
 ;;
 
+(define (guile-packages-xexp)
+  (cache-get-proc
+   (compose html->xexp port->string)
+   "guile-packages.html"
+   (λ () (url-input "https://www.gnu.org/software/guile/libraries/"))))
+
 (define (guile-package-descriptions document)
   (filter
    (λ (s) (and (>= (string-length s) 20)
@@ -262,7 +268,7 @@
         ((sxpath "//body//div") document))))
 
 (define (guile-packages)
-  (let* ((document (html->xexp (file->string ".cache/guile-packages.html"))))
+  (let* ((document (guile-packages-xexp)))
     (packages-for
      "Guile"
      (map (λ (package description)
