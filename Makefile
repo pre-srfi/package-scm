@@ -1,6 +1,6 @@
 .PHONY : all \
 	clean clean-deps clean-cache \
-	install-deps package-htmls browse-html
+	install-deps browse-html
 
 all : packhack.html
 
@@ -23,7 +23,7 @@ install-deps :
 	    css-expr html-parsing sxml txexpr
 
 # Note: see http://lassi.io/temp/packhack.html for a complete result page
-packhack.html : install-deps package-htmls
+packhack.html : install-deps
 	racket packhack.rkt
 
 # Note: this obviously assumes firefox to be installed; adapt as required
