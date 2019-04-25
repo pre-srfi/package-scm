@@ -2,10 +2,10 @@
 	clean clean-deps clean-cache \
 	install-deps browse-html
 
-all : packhack.html
+all : packhack.html packhack.json
 
 clean : clean-deps clean-cache
-	rm -f packhack.html
+	rm -f packhack.html packhack.json
 
 clean-deps :
 	-raco pkg remove --demote sxml
@@ -23,7 +23,7 @@ install-deps :
 	    css-expr html-parsing sxml txexpr
 
 # Note: see http://lassi.io/temp/packhack.html for a complete result page
-packhack.html : install-deps
+packhack.html packhack.json : install-deps
 	racket packhack.rkt
 
 # Note: this obviously assumes firefox to be installed; adapt as required
