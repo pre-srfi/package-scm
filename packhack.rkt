@@ -321,15 +321,25 @@
       #:headers '("Content-Type: application/x-www-form-urlencoded")
       #:data (alist->form-urlencoded `((name . ,pkg-name)))))))
 
-(define (raven-packages)
+(define (make-pkg-entry pkg-name [pkg-desc #f])
 
-  (define (dflt-desc pkg-desc [dflt-text "(no description)"])
+  (define (dflt-desc pkg-desc [sanatize identity] [dflt-text "(no description)"])
     (if (and pkg-desc (positive? (string-length (string-trim pkg-desc))))
-        pkg-desc
+        (sanatize pkg-desc)
         dflt-text))
 
-  (define (make-pkg-entry pkg-name [pkg-desc #f])
-    `(,pkg-name "" ,(dflt-desc pkg-desc)))
+  (define (capitalize-first pkg-desc)
+    (if (and pkg-desc (not (zero? (string-length pkg-desc))))
+        (begin (string-set! pkg-desc 0 (char-upcase (string-ref pkg-desc 0)))
+               pkg-desc)
+        pkg-desc))
+
+  (define (strip-trailing-period pkg-desc)
+    (string-trim pkg-desc #px"[\\.\\s]+" #:left? #f))
+
+  `(,pkg-name "" ,(dflt-desc pkg-desc (compose capitalize-first strip-trailing-period))))
+
+(define (raven-packages)
 
   (define (try-json-pkg-info pkg-name dflt-pkg-info)
     (let* ((json-obj (raven-cache-package-info-json pkg-name))
@@ -407,7 +417,119 @@
 
   (packages-for "Raven" (map all-pkg-info (raven-cache-packages-json))))
 
-;
+;;
+
+(define (slib-packages)
+  ;; Note: We won't use any caching helpers here, we just assume that
+  ;; the whole repo has been cloned to local folder "~/.cache/slib".
+
+  (define local-repo-path-name ".cache/slib")
+
+  (define (pathname->text-lines pathname)
+    (string-split (file->string pathname) "\n"))
+
+  (define (slib-file-ref pkg-name)
+    (format "`~a'" pkg-name))
+
+  (define (all-readme-infos)
+
+    (define (maybe-continuation-line line)
+      ;; Some package descriptions in README span multiple lines. This procedure helps to join them.
+      (and (positive? (string-length line))
+           (char=? (string-ref line 0) #\tab)
+           (substring line 1)))
+
+    (define (maybe-pkg-line line)
+      ;; Expected format of a package description's first line in README:
+      ;; "`array.scm' has multi-dimensional arrays."
+      (regexp-match #px"`((\\S+)\\.scm)'\\s+(.*)" line))
+
+    (define (cleanup-desc line)
+      (cond
+       ((regexp-match #px"(has|is)(\\s+a)?\\s+(.*)" line)
+        => (match-lambda ([list _ _ _ desc] desc)))
+       (else line)))
+
+    (sort
+     (let loop ((lines (pathname->text-lines ".cache/slib/README"))
+                (state 'start)
+                (pkg-name-curr #f)
+                (pkg-desc-curr "")
+                (pkg-entries '()))
+       (if (null? lines)
+           pkg-entries
+           (let* ((full-line (car lines))
+                  (line (string-trim full-line)))
+             (cond
+              ((and (eq? state 'start) (string-prefix? line (slib-file-ref "slib.sh")))
+               ;; start collecting package descriptions after this line.
+               (loop (cdr lines) 'in-pkg-list pkg-name-curr pkg-desc-curr pkg-entries))
+              ((and (eq? state 'in-pkg-list) (string=? line "INSTALLATION INSTRUCTIONS"))
+               ;; stop collecting package descriptions after this line and return all collected entries.
+               (cons (make-pkg-entry pkg-name-curr pkg-desc-curr) pkg-entries))
+              ((and (eq? state 'in-pkg-list) (maybe-continuation-line full-line))
+               => (lambda (pkg-desc-cont)
+                    (loop (cdr lines) state
+                          pkg-name-curr
+                          (string-append pkg-desc-curr " " pkg-desc-cont)
+                          pkg-entries)))
+              ((and (eq? state 'in-pkg-list) (maybe-pkg-line line))
+               => (match-lambda [(list _ pkg-basename pkg-name pkg-readme-desc)
+                                 (loop (cdr lines) state
+                                       pkg-name
+                                       (cleanup-desc pkg-readme-desc)
+                                       (if pkg-name-curr
+                                           (cons (make-pkg-entry pkg-name-curr pkg-desc-curr) pkg-entries)
+                                           pkg-entries))]))
+              (else
+               (loop (cdr lines) state pkg-name-curr pkg-desc-curr pkg-entries))))))
+     string<? #:key car))
+
+  (define (all-files.scm-infos)
+    ;; Some figures on collecting package descriptions from source files and README:
+    ;; - total number of .scm files in ~/.cache/slib: 154 (where all files are in the root folder)
+    ;; - number of packages returned by `all-files.scm-infos': 144 (with number of packages named srfi*.scm: 7)
+    ;; - number of packages returned by `all-files.scm-infos' without resorting to `all-readme-infos': 136
+
+    (define (make-try-get-readme-info)
+      (define readme-infos #f)
+      (lambda (pkg-name)
+        (unless readme-infos
+          (set! readme-infos (all-readme-infos)))
+        (find (lambda (info) (string=? (car info) pkg-name)) readme-infos)))
+
+    (define try-get-readme-info (make-try-get-readme-info))
+
+    (define (try-get-file-info scm.path)
+
+      (define (strip-trailing-emacs-hint pkg-desc)
+        ;; Someone having a better regexp-brain than me will be able
+        ;; to squeeze that into the regexp for matching the
+        ;; package description; I won't bother doing so...
+        (cond
+         ((regexp-match #px"(.*)-\\*-[sS]cheme-\\*-" pkg-desc)
+          => (match-lambda ([list _ stripped-pkg-desc] stripped-pkg-desc)))
+         (else pkg-desc)))
+
+      (let* ((scm.file-name (file-name-from-path scm.path))
+             (pkg-name (path->string (path-replace-extension scm.file-name #"")))
+             (pkg-basename (path->string scm.file-name)))
+        (cond
+         ((regexp-match #px";+\\s*\"(\\S+)\"[\\.,:]?\\s+(.*)" (car (file->lines scm.path)))
+          => (match-lambda [(list _ l-basename l-desc)
+                            (if (string=? l-basename pkg-basename)
+                                (make-pkg-entry pkg-name (strip-trailing-emacs-hint l-desc))
+                                (try-get-readme-info pkg-name))]))
+         ((try-get-readme-info pkg-name) => identity)
+         (else #f))))
+
+    (filter identity
+            (map try-get-file-info
+                 (find-files            ; this will already return an alphabetically sorted list
+                  (lambda (scm.path) (bytes=? (or (path-get-extension scm.path) #".NEVER") #".scm"))
+                  local-repo-path-name))))
+
+  (packages-for "slib" (all-files.scm-infos)))
 
 (define (packages-list-from-all-repos)
   (append (akku-and-snow-fort-packages)
@@ -415,7 +537,8 @@
           (chicken-egg-index-5)
           (gauche-packages)
           (guile-packages)
-          (raven-packages)))
+          (raven-packages)
+          (slib-packages)))
 
 (define (package-impl-tds package-impl)
   `((td ,(cap-string-length max-description-length (second package-impl)))
