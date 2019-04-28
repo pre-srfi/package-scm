@@ -162,6 +162,10 @@
                    (akku-package-first-version-form package-form))
             '(description ""))))
 
+(define (akku-package-url pkg-name)
+  (string-append "https://akkuscm.org/packages/"
+                 (uri-path-segment-encode pkg-name) "/"))
+
 (define (akku-package-from-snow-fort? package-form)
   (string-prefix?
    (akku-package-first-description package-form)
@@ -171,7 +175,9 @@
   (append-map (λ (package-form)
                 (let* ((pkg-name (akku-package-name package-form))
                        (pkg-desc (akku-package-first-synopsis package-form))
-                       (package  (list pkg-name "" pkg-desc)))
+                       (package  (list pkg-name
+                                       (akku-package-url pkg-name)
+                                       pkg-desc)))
                   (cons (package-for "Akku" package)
                         (if (akku-package-from-snow-fort? package-form)
                             (list (package-for "Snow-Fort" package))
