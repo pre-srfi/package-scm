@@ -172,18 +172,21 @@
    "This Snow package is federated from http://snow-fort.org/"))
 
 (define (akku-and-snow-fort-packages)
-  (append-map (λ (package-form)
-                (let* ((pkg-name (akku-package-name package-form))
-                       (pkg-desc (akku-package-first-synopsis package-form))
-                       (package  (list pkg-name
-                                       (akku-package-url pkg-name)
-                                       pkg-desc)))
-                  (cons (package-for "Akku" package)
-                        (if (akku-package-from-snow-fort? package-form)
-                            (list (package-for "Snow-Fort" package))
-                            (list)))))
-              (filter (curry first-equal? 'package)
-                      (akku-cache-index-forms))))
+  (append-map
+   (λ (package-form)
+     (let* ((pkg-name (akku-package-name package-form))
+            (pkg-desc (akku-package-first-synopsis package-form))
+            (akku-pkg (package-for "Akku"
+                                   (list pkg-name
+                                         (akku-package-url pkg-name)
+                                         pkg-desc)))
+            (snow-pkg (if (akku-package-from-snow-fort? package-form)
+                          (package-for "Snow-Fort"
+                                       (list pkg-name "" pkg-desc))
+                          #f)))
+       (cons akku-pkg (if snow-pkg (list snow-pkg) '()))))
+   (filter (curry first-equal? 'package)
+           (akku-cache-index-forms))))
 
 ;;
 
