@@ -540,9 +540,10 @@
           (raven-packages)
           (slib-packages)))
 
-(define (package-impl-tds package-impl)
-  `((td ,(cap-string-length max-description-length (second package-impl)))
-    (td ,(third package-impl))))
+(define (package-impl-tds pkg)
+  (match-define (list url description repository) pkg)
+  `((td ,(cap-string-length max-description-length description))
+    (td ,repository)))
 
 (define (package-list->html package-list)
   (xexpr->html
