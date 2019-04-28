@@ -543,7 +543,9 @@
 (define (package-impl-tds pkg)
   (match-define (list url description repository) pkg)
   `((td ,(cap-string-length max-description-length description))
-    (td ,repository)))
+    (td ,(if (non-empty-string? url)
+             `(a ((href ,url)) ,repository)
+             repository))))
 
 (define (package-list->html package-list)
   (xexpr->html
