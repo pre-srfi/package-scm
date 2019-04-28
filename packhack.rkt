@@ -225,10 +225,11 @@
 
 ;;
 
+(define gauche-packages-url
+  "https://practical-scheme.net/wiliki/wiliki.cgi/Gauche:Packages")
+
 (define (gauche-packages-xexp)
-  (cache-get-html-xexp-from-url
-   "gauche-packages.html"
-   "https://practical-scheme.net/wiliki/wiliki.cgi/Gauche:Packages"))
+  (cache-get-html-xexp-from-url "gauche-packages.html" gauche-packages-url))
 
 (define (gauche-iterate-relevant-tags)
   (let ((document (gauche-packages-xexp)))
@@ -236,7 +237,9 @@
      (λ (tag)
        (case (first tag)
          ((h3)
-          (list (list 'h3 (string-trim (first ((sxpath "text()") tag))))))
+          (list (list 'h3
+                      (string-trim (first ((sxpath "text()") tag)))
+                      (car ((sxpath "@id/text()") tag)))))
          ((table)
           (map (compose (curry list 'td) string-trim)
                ((sxpath "//td/text()") tag)))
@@ -246,7 +249,10 @@
 (define (gauche-append-package all cur)
   (if (not cur)
       all
-      (append all (list (list (first cur) "" (third cur))))))
+      (match-let (((list-rest pkg-name heading-id _ description _) cur))
+        (let ((url (string-append gauche-packages-url "#"
+                                  (uri-path-segment-encode heading-id))))
+          (append all (list (list pkg-name url description)))))))
 
 (define (gauche-packages)
   (packages-for
@@ -255,8 +261,8 @@
      (match tags
        ((list)
         (gauche-append-package all cur))
-       ((list-rest (list 'h3 text) tags)
-        (loop tags (list text) (gauche-append-package all cur)))
+       ((list-rest (list 'h3 text heading-id) tags)
+        (loop tags (list text heading-id) (gauche-append-package all cur)))
        ((list-rest (list 'td text) tags)
         (loop tags (append cur (list text)) all))))))
 
