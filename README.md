@@ -1,4 +1,4 @@
-# SRFI nnn: Title
+# SRFI nnn: Scheme metadata files
 
 by Firstname Lastname, Another Person, Third Person
 
@@ -38,9 +38,47 @@ GitHub's version of Markdown can make tables. For example:
 
 # Specification
 
-??? detailed specification. This should be detailed enough that a
-conforming implementation could be completely created from this
-description.
+## Package metadata
+
+```
+(package
+
+  (version <string>)
+  (author <name> <email>)       ; allow multiple
+  (maintainer <name> <email>)   ; allow multiple
+  (license <license-expression>)
+  (homepage <uri>)
+  (manual <uri>)                ; can be a relative filename in snow-fort
+  (category <category>)         ; allow multiple
+  (synopsis <string>)
+  (long-description <string>)
+
+  (depends ...)
+  (test-depends ...)
+  (test-script <filename>))
+```
+
+## License expression sublanguage
+
+License information is given in a [domain-specific language for SPDX license expressions](https://gitlab.com/weinholt/spdx).
+
+ - (**or** *expr0* *expr1*) — A choice between license expressions.
+ - (**and** *expr0* *expr1*) — A requirement to comply with both
+   license expressions.
+ - (**with** *license* *exception*) — A license identifier with a
+   license exception identifier (both strings).
+ - (**user-defined** *document-ref* *license-ref*) — This is a
+   user-defined license reference. The document is optional and `#f`
+   if omitted, otherwise both are strings.
+ - (**+** *license-identifier*) — Represents "(or later)". Example:
+   `(+ "GPL-3.0")` represents "GNU GPL version 3 (or later)".
+ - *license-identifier* — A string identifying a license. Example:
+   `"GPL-3.0"`.
+
+Allowed characters in strings are A-Z, a-z, 0-9 and hyphen (-). No
+check is done to verify that license identifiers and license exception
+identifiers are valid.
+
 
 # Implementation
 
