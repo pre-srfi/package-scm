@@ -1,11 +1,15 @@
 (import (scheme base) (scheme file) (scheme read) (scheme write)
         (scheme process-context))
 
+;;; Settings
+
 (define trace? #t)
 
 (define initial-features '(chicken))
 
 (define metadata-features (make-parameter initial-features))
+
+;;; Utilities
 
 (define (append-map f xs) (apply append (map f xs)))
 
@@ -15,6 +19,8 @@
   (let loop ((forms '()))
     (let ((form (read)))
       (if (eof-object? form) (reverse forms) (loop (cons form forms))))))
+
+;;; Generic cond-expand evaluator
 
 (define (cond-expand-match? expr)
   (cond ((not (pair? expr))
@@ -36,6 +42,13 @@
         (else
          (error "Unknown boolean expression:" expr))))
 
+;;; The stuff that is specific to this SRFI
+
+(define (trace-expanding form)
+  (parameterize ((current-output-port (current-error-port)))
+    (display "Expanding ")
+    (writeln form)))
+
 (define (expand-cond-expand-into-many clauses)
   (if (null? clauses) (error "No matching cond-expand clause")
       (let* ((clause  (car clauses))
@@ -46,10 +59,7 @@
             (expand-cond-expand-into-many (cdr clauses))))))
 
 (define (expand-one-form-into-many form)
-  (when trace?
-    (parameterize ((current-output-port (current-error-port)))
-      (display "Expanding ")
-      (writeln form)))
+  (when trace? (trace-expanding form))
   (cond ((not (pair? form))
          (list form))
         ((eq? (car form) 'cond-expand)
@@ -69,6 +79,8 @@
 
 (define (read-scheme-metadata-file filename)
   (with-input-from-file filename read-scheme-metadata))
+
+;;; Main program
 
 (define (main)
   (let ((args (cdr (command-line))))
