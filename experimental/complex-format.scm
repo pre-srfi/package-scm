@@ -20,27 +20,26 @@
     (let ((form (read)))
       (if (eof-object? form) (reverse forms) (loop (cons form forms))))))
 
-;;; Generic cond-expand evaluator
-
-(define (cond-expand-match? expr)
-  (cond ((not (pair? expr))
-         (not (not (memq expr (metadata-features)))))
-        ((eq? (car expr) 'not)
-         (if (= 2 (length expr))
-             (not (cond-expand-match? (cadr expr)))
-             (error "Malformed (not ...)")))
-        ((eq? (car expr) 'and)
-         (let loop ((expr (cdr expr)))
-           (or (null? expr)
-               (and (cond-expand-match? (car expr))
-                    (loop (cdr expr))))))
-        ((eq? (car expr) 'or)
-         (let loop ((expr (cdr expr)))
-           (and (not (null? expr))
-                (or (cond-expand-match? (car expr))
-                    (loop (cdr expr))))))
-        (else
-         (error "Unknown boolean expression:" expr))))
+(define (evaluate-boolean-expression true-symbols expr)
+  (let recurse ((expr expr))
+    (cond ((symbol? expr)
+           (not (not (memq expr true-symbols))))
+          ((and (pair? expr) (eq? (car expr) 'not))
+           (if (= 2 (length expr))
+               (not (recurse (cadr expr)))
+               (error "Malformed (not ...)")))
+          ((and (pair? expr) (eq? (car expr) 'and))
+           (let loop ((expr (cdr expr)))
+             (or (null? expr)
+                 (and (recurse (car expr))
+                      (loop (cdr expr))))))
+          ((and (pair? expr) (eq? (car expr) 'or))
+           (let loop ((expr (cdr expr)))
+             (and (not (null? expr))
+                  (or (recurse (car expr))
+                      (loop (cdr expr))))))
+          (else
+           (error "Unknown boolean expression:" expr)))))
 
 ;;; The stuff that is specific to this SRFI
 
@@ -54,7 +53,7 @@
       (let* ((clause  (car clauses))
              (c-guard (car clause))
              (c-body  (cdr clause)))
-        (if (cond-expand-match? c-guard)
+        (if (evaluate-boolean-expression (metadata-features) c-guard)
             (expand-many-forms c-body)
             (expand-cond-expand-into-many (cdr clauses))))))
 
