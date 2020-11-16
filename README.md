@@ -53,6 +53,8 @@ GitHub's version of Markdown can make tables. For example:
   (synopsis <string>)
   (long-description <string>)
 
+  (provides-srfi <nonnegative-integer>)  ; allow multiple
+
   (depends ...)
   (test-depends ...)
   (test-script <filename>))
