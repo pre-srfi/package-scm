@@ -30,7 +30,7 @@
     (let ((form (read)))
       (if (eof-object? form) (reverse forms) (loop (cons form forms))))))
 
-(define known-spdx-license-identifiers
+(define spdx-license-identifiers
   (with-input-from-file "convert-sources/spdx-license-identifiers.scm"
     read-all))
 
@@ -79,8 +79,7 @@
 
 (define (convert-license license)
   (let ((license (sloppy-stringify license)))
-    (if (member license known-spdx-license-identifiers)
-        license
+    (if (member license spdx-license-identifiers) license
         (string-append "LicenseRef-" license))))
 
 (define (convert-akku-package pkg)
