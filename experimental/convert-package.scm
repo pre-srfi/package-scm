@@ -1,10 +1,18 @@
 (import (scheme base) (scheme file) (scheme read) (scheme write))
 
 (cond-expand
+  ((library (srfi 166))
+   (import (srfi 166)))
   (gauche
    (import (rename (only (gauche base) pprint) (pprint pretty-print))))
   (else
    (define (pretty-print x) (write x) (newline))))
+
+(cond-expand
+  ((library (srfi 166))
+   ;; Chibi needs the (import ...) to be in a separate cond-expand.
+   (define (pretty-print x) (show #t (pretty x))))
+  (else))
 
 (define first car)
 
