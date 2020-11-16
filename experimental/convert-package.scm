@@ -102,10 +102,7 @@
         ((string=? egg-name "box") 111)
         (else #f)))
 
-(define (convert-c4-dot-meta)
-  #f)
-
-(define (convert-c5-dot-egg egg)
+(define (convert-chicken-egg egg)
   (let ((egg-name (car egg)))
     (append
      `((name ,egg-name))
@@ -125,11 +122,15 @@
       (filter (lambda (x) (and (pair? x) (eq? 'package (car x))))
               (read-all)))))
 
+(define eggs-4-latest
+  (with-input-from-file "convert-sources/eggs-4-latest.scm" read-all))
+
 (define eggs-5-latest
   (with-input-from-file "convert-sources/eggs-5-latest.scm" read-all))
 
 (define all-packages
   (append (map convert-akku-package akku-index)
-          (map convert-c5-dot-egg eggs-5-latest)))
+          (map convert-chicken-egg eggs-4-latest)
+          (map convert-chicken-egg eggs-5-latest)))
 
 (for-each/between pretty-print newline all-packages)
