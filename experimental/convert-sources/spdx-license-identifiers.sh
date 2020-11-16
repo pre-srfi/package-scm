@@ -5,4 +5,5 @@ echo "Entering directory '$PWD'"
 set -x
 curl --location --fail --silent --show-error \
     https://raw.githubusercontent.com/spdx/license-list-data/master/json/licenses.json |
-    jq '.licenses[].licenseId' >spdx-license-identifiers.scm
+    jq '.licenses[].licenseId' >spdx-license-identifiers.scm.new
+mv -f spdx-license-identifiers.scm.new spdx-license-identifiers.scm
