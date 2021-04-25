@@ -71,8 +71,8 @@ Each package has an `etc/meta` file. The following fields exist.
 
     (description "GTK+ 2.x binding for STklos -- GTklos level")
     (version "1.0.0")
-    (author "Erick Gallesio <eg at unice.fr>")
-    (maintainer "Erick Gallesio <eg at unice.fr>")
+    (author "Author Name <author@example.com>")
+    (maintainer "Author Name <author@example.com>")
     (stklos-doc (html))
     (license gpl-2.1)
 
@@ -126,7 +126,7 @@ exist.
     (synopsis "SRFI 193: Command line")
     (category os)
     (license "ISC")
-    (author "Lassi Kortela")
+    (author "Author Name")
     (test-depends test)
 
 Each Chicken 5 egg `foo` has a `foo.egg` file. The following fields
@@ -136,7 +136,7 @@ exist.
     (category os)
     (version "0.1.3")
     (license "ISC")
-    (author "Lassi Kortela")
+    (author "Author Name")
     (test-dependencies test)
     (components (extension srfi-193))
 
@@ -157,8 +157,8 @@ Each package has an `package.scm` file. The following fields exist.
     (name postgresql)
     (version 0.1)
     (license "BSD")
-    (authors "Takashi Kato")
-    (maintainers "Justin Ethier")
+    (authors "Author Name")
+    (maintainers "Author Name")
     (description "PostgreSQL socket frontend interface library written in pure R7RS Scheme.")
     (tags "database" "sql" "networking")
     (docs "https://github.com/cyclone-scheme/cyclone-winds/wiki/postgresql")
