@@ -37,26 +37,27 @@ following fields exist.
 
     (name "spdx")
     (versions
-      ((version "1.0.0") (synopsis "SPDX license expressions and such")
-        (authors "Göran Weinholt <goran@weinholt.se>")
-        (license "MIT")
-        (lock
-          (location
-            (url "https://archive.akkuscm.org/archive/pkg/s/spdx_1.0.0_repack.tar.xz"))
-          (content
-            (sha256
-              "5e621cb4447c9fb5136002aa01f5600de84f44cd321786262af69de4c6379c66")))
-        (depends
-          ("chez-srfi" "~0.0.0-akku")
-          ("packrat" "~0.1.0-akku"))
-        (depends/dev) (conflicts)))
+      ((version "1.0.0")
+       (synopsis "SPDX license expressions and such")
+       (authors "Göran Weinholt <goran@weinholt.se>")
+       (license "MIT")
+       (lock
+         (location
+          (url "https://archive.akkuscm.org/archive/pkg/s/spdx_1.0.0_repack.tar.xz"))
+         (content
+          (sha256
+           "5e621cb4447c9fb5136002aa01f5600de84f44cd321786262af69de4c6379c66")))
+       (depends
+         ("chez-srfi" "~0.0.0-akku")
+         ("packrat" "~0.1.0-akku"))
+       (depends/dev)
+       (conflicts)))
 
 ### Snow-Fort (R7RS)
 
     (version "0.7")
     (library
-      (name
-        (chibi sqlite3))
+      (name (chibi sqlite3))
       (path "chibi/sqlite3.sld")
       (depends
         (chibi)
