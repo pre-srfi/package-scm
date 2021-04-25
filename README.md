@@ -28,13 +28,146 @@ improvement.
 
 ## Survey of prior art
 
-GitHub's version of Markdown can make tables. For example:
+### Akku (R6RS, R7RS)
 
-| System        | Procedure | Signature                 |
-| ------------- |:---------:| ------------------------- |
-| System A      | `jumble`  | _list_ _elem_             |
-| System B      | `bungle`  | _elem_ _list_             |
-| System C      | `frob`    | _list_ _elem_ _predicate_ |
+There are no metadata files inside the packages themselves.
+
+Each package has a form in the global `akku-index.scm` file. The
+following fields exist.
+
+    (name "spdx")
+    (versions
+      ((version "1.0.0") (synopsis "SPDX license expressions and such")
+        (authors "Göran Weinholt <goran@weinholt.se>")
+        (license "MIT")
+        (lock
+          (location
+            (url "https://archive.akkuscm.org/archive/pkg/s/spdx_1.0.0_repack.tar.xz"))
+          (content
+            (sha256
+              "5e621cb4447c9fb5136002aa01f5600de84f44cd321786262af69de4c6379c66")))
+        (depends
+          ("chez-srfi" "~0.0.0-akku")
+          ("packrat" "~0.1.0-akku"))
+        (depends/dev) (conflicts)))
+
+### Snow-Fort (R7RS)
+
+    (version "0.7")
+    (library
+      (name
+        (chibi sqlite3))
+      (path "chibi/sqlite3.sld")
+      (depends
+        (chibi)
+        (scheme base)
+        (scheme write)
+        (srfi 130)))
+
+### ScmPkg
+
+Each package has an `etc/meta` file. The following fields exist.
+
+    (description "GTK+ 2.x binding for STklos -- GTklos level")
+    (version "1.0.0")
+    (author "Erick Gallesio <eg at unice.fr>")
+    (maintainer "Erick Gallesio <eg at unice.fr>")
+    (stklos-doc (html))
+    (license gpl-2.1)
+
+### Gauche modules
+
+Each package has a `package.scm` file. The following fields exist.
+
+    (define-gauche-package "Gauche-tar"
+      :version "1.1.2"
+      :description "Multi-line. The first line is a summary."
+      :require (("Gauche" (>= "0.9.5")) ("Gauche-gl" "0.6"))
+      :authors ("aaauuue <aaauuue@gmail.com>")
+      :maintainers ("Cy D. Fect <c@example.com>")
+      :licenses ("GPL")
+      :homepage "http://example.com/Gauche-tar/"
+      :repository "http://example.com/Gauche-tar.git")
+
+### Dorodango (R6RS) and Guildhall (Guile)
+
+[Dorodango](https://gitlab.com/rotty/dorodango) is an R6RS package
+manager by Andreas Rottmann, and Guildhall is a derivative for Guile.
+
+### Guix (Guile)
+
+Guix [package
+recipes](https://guix.gnu.org/manual/en/html_node/Defining-Packages.html).
+The following fields exist.
+
+    (name "hello")
+    (version "2.10")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://gnu/hello/hello-" version
+                                  ".tar.gz"))
+              (sha256
+               (base32
+                "0ssi1wpaf7plaswqqjwigppsg5fyh99vdlb9kzl7c9lng89ndq1i"))))
+    (build-system gnu-build-system)
+    (arguments '(#:configure-flags '("--enable-silent-rules")))
+    (inputs `(("gawk" ,gawk)))
+    (synopsis "Hello, GNU world: An example GNU package")
+    (description "Guess what GNU Hello prints!")
+    (home-page "https://www.gnu.org/software/hello/")
+    (license gpl3+)
+
+### Eggs (Chicken)
+
+Each Chicken 4 egg `foo` has a `foo.meta` file. The following fields
+exist.
+
+    (synopsis "SRFI 193: Command line")
+    (category os)
+    (license "ISC")
+    (author "Lassi Kortela")
+    (test-depends test)
+
+Each Chicken 5 egg `foo` has a `foo.egg` file. The following fields
+exist.
+
+    (synopsis "SRFI 193: Command line")
+    (category os)
+    (version "0.1.3")
+    (license "ISC")
+    (author "Lassi Kortela")
+    (test-dependencies test)
+    (components (extension srfi-193))
+
+The Chicken package index uses a `foo.release-info` file for each egg
+`foo`:
+
+    (repo git "git://github.com/lassik/chicken-{egg-name}.git")
+    (uri targz "https://github.com/lassik/chicken-{egg-name}/tarball/{egg-release}")
+    (release "0.1")
+    (release "0.1.1")
+    (release "0.1.2")
+    (release "0.1.3")
+
+### Winds (Cyclone)
+
+Each package has an `package.scm` file. The following fields exist.
+
+    (name postgresql)
+    (version 0.1)
+    (license "BSD")
+    (authors "Takashi Kato")
+    (maintainers "Justin Ethier")
+    (description "PostgreSQL socket frontend interface library written in pure R7RS Scheme.")
+    (tags "database" "sql" "networking")
+    (docs "https://github.com/cyclone-scheme/cyclone-winds/wiki/postgresql")
+    (test "test.scm")
+    (dependencies (bytevector md5))
+    (test-dependencies ())
+    (foreign-dependencies ())
+    (library
+     (name (cyclone postgresql))
+     (description "Wrap library"))
 
 # Specification
 
