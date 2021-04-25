@@ -39,7 +39,7 @@ following fields exist.
     (versions
       ((version "1.0.0")
        (synopsis "SPDX license expressions and such")
-       (authors "Göran Weinholt <goran@weinholt.se>")
+       (authors "Author Name <author@example.com>")
        (license "MIT")
        (lock
          (location
@@ -84,8 +84,8 @@ Each package has a `package.scm` file. The following fields exist.
       :version "1.1.2"
       :description "Multi-line. The first line is a summary."
       :require (("Gauche" (>= "0.9.5")) ("Gauche-gl" "0.6"))
-      :authors ("aaauuue <aaauuue@gmail.com>")
-      :maintainers ("Cy D. Fect <c@example.com>")
+      :authors ("Author Name <author@example.com>")
+      :maintainers ("Author Name <author@example.com>")
       :licenses ("GPL")
       :homepage "http://example.com/Gauche-tar/"
       :repository "http://example.com/Gauche-tar.git")
