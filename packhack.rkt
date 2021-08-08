@@ -226,6 +226,18 @@
   (chicken-egg-index-n
    "Chicken 5" "egg-index-5.html" "https://eggs.call-cc.org/5/"))
 
+(define (chicken-egg-locations)
+  (let* ((baseurl "https://bugs.call-cc.org/browser/release/5/egg-locations")
+         (document (cache-get-html-xexp-from-url
+                    "egg-locations-5-page" baseurl))
+         (original (url->string
+                    (combine-url/relative
+                     (string->url baseurl)
+                     (car ((sxpath "//div[@id = 'altlinks']//a/@href/text()")
+                           document))))))
+    (cache-get-proc-from-url
+     port->string "egg-locations-5" original)))
+
 ;;
 
 (define gauche-packages-url
