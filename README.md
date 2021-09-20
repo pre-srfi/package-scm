@@ -150,6 +150,29 @@ The Chicken package index uses a `foo.release-info` file for each egg
     (release "0.1.2")
     (release "0.1.3")
 
+### Snow (Scheme Now!)
+
+    (package* tar/v1.0.1
+     (provide:
+      (define-record* foo
+        ;; uid: foo-1e4c3b06-1a6f-4765-9d77-c1093d1c15ee
+        ...)
+      (define ...)
+      (define ...)
+      (define ...))
+
+     (maintainer: "Scheme Hacker <example at example.org>")
+     (author: "Scheme Hacker <example at example.org>")
+     (homepage: "http://example.com")
+     (description: "TAR file format packing and unpacking.")
+     (keywords: conv snow)
+     (license: lgpl/v2.1)
+     (require: bignum/v1)
+     (require: homovector/v1)
+     (require: genport/v1)
+     (require: filesys/v1)
+     (require: time/v1))
+
 ### Winds (Cyclone)
 
 Each package has an `package.scm` file. The following fields exist.
